@@ -15,6 +15,7 @@ mod switch;
 mod task;
 
 use crate::loader::{get_app_data, get_num_app};
+use crate::mm::MemorySet;
 use crate::sync::UPSafeCell;
 use crate::trap::TrapContext;
 use alloc::vec::Vec;
@@ -133,6 +134,20 @@ impl TaskManager {
         inner.tasks[cur].change_program_brk(size)
     }
 
+    /// Record a syscall invocation for the current task.
+    fn record_syscall(&self, id: usize) -> usize {
+        let mut inner = self.inner.exclusive_access();
+        let cur = inner.current_task;
+        inner.tasks[cur].record_syscall(id)
+    }
+
+    /// Get the syscall count of a syscall id for the current task.
+    fn get_syscall_count(&self, id: usize) -> usize {
+        let inner = self.inner.exclusive_access();
+        let cur = inner.current_task;
+        inner.tasks[cur].get_syscall_count(id)
+    }
+
     /// Switch current `Running` task to the task we have found,
     /// or there is no `Ready` task and we can exit with all applications completed
     fn run_next_task(&self) {
@@ -201,4 +216,27 @@ pub fn current_trap_cx() -> &'static mut TrapContext {
 /// Change the current 'Running' task's program break
 pub fn change_program_brk(size: i32) -> Option<usize> {
     TASK_MANAGER.change_current_program_brk(size)
+}
+
+/// Record a syscall invocation for the current task.
+pub fn record_syscall(id: usize) -> usize {
+    TASK_MANAGER.record_syscall(id)
+}
+
+/// Get the syscall count of a syscall id for the current task.
+pub fn get_syscall_count(id: usize) -> usize {
+    TASK_MANAGER.get_syscall_count(id)
+}
+
+/// Get a mutable reference to the current task's memory set.
+///
+/// # Safety
+/// This returns a raw-mut derived from the UPSafeCell inner. The caller must
+/// not hold any borrow on `TASK_MANAGER.inner` when calling this function.
+pub fn current_memory_set() -> &'static mut MemorySet {
+    let mut inner = TASK_MANAGER.inner.exclusive_access();
+    let cur = inner.current_task;
+    let ptr = &mut inner.tasks[cur].memory_set as *mut MemorySet;
+    drop(inner);
+    unsafe { &mut *ptr }
 }

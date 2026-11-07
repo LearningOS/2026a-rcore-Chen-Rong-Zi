@@ -1,6 +1,6 @@
 //! Types related to task management
 use super::TaskContext;
-use crate::config::TRAP_CONTEXT_BASE;
+use crate::config::{MAX_SYSCALL_NUM, TRAP_CONTEXT_BASE};
 use crate::mm::{
     kernel_stack_position, MapPermission, MemorySet, PhysPageNum, VirtAddr, KERNEL_SPACE,
 };
@@ -28,6 +28,9 @@ pub struct TaskControlBlock {
 
     /// Program break
     pub program_brk: usize,
+
+    /// Syscall invocation counts
+    pub syscall_counts: [usize; MAX_SYSCALL_NUM],
 }
 
 impl TaskControlBlock {
@@ -63,6 +66,7 @@ impl TaskControlBlock {
             base_size: user_sp,
             heap_bottom: user_sp,
             program_brk: user_sp,
+            syscall_counts: [0; MAX_SYSCALL_NUM],
         };
         // prepare TrapContext in user space
         let trap_cx = task_control_block.get_trap_cx();
@@ -74,6 +78,15 @@ impl TaskControlBlock {
             trap_handler as usize,
         );
         task_control_block
+    }
+    /// get the syscall count of a syscall id
+    pub fn get_syscall_count(&self, id: usize) -> usize {
+        self.syscall_counts[id]
+    }
+    /// record a syscall invocation and return the updated count
+    pub fn record_syscall(&mut self, id: usize) -> usize {
+        self.syscall_counts[id] += 1;
+        self.syscall_counts[id]
     }
     /// change the location of the program break. return None if failed.
     pub fn change_program_brk(&mut self, size: i32) -> Option<usize> {

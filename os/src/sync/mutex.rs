@@ -4,6 +4,7 @@ use super::UPSafeCell;
 use crate::task::TaskControlBlock;
 use crate::task::{block_current_and_run_next, suspend_current_and_run_next};
 use crate::task::{current_task, wakeup_task};
+use alloc::vec::Vec;
 use alloc::{collections::VecDeque, sync::Arc};
 
 /// Mutex trait
@@ -12,6 +13,12 @@ pub trait Mutex: Sync + Send {
     fn lock(&self);
     /// Unlock the mutex
     fn unlock(&self);
+    /// Whether the mutex is currently locked (held by some task)
+    fn is_locked(&self) -> bool;
+    /// tids of tasks currently waiting on this mutex (blocking mutex only)
+    fn wait_tids(&self) -> Vec<usize> {
+        Vec::new()
+    }
 }
 
 /// Spinlock Mutex struct
@@ -49,6 +56,10 @@ impl Mutex for MutexSpin {
         trace!("kernel: MutexSpin::unlock");
         let mut locked = self.locked.exclusive_access();
         *locked = false;
+    }
+
+    fn is_locked(&self) -> bool {
+        *self.locked.exclusive_access()
     }
 }
 
@@ -101,5 +112,23 @@ impl Mutex for MutexBlocking {
         } else {
             mutex_inner.locked = false;
         }
+    }
+
+    fn is_locked(&self) -> bool {
+        self.inner.exclusive_access().locked
+    }
+
+    fn wait_tids(&self) -> Vec<usize> {
+        self.inner
+            .exclusive_access()
+            .wait_queue
+            .iter()
+            .filter_map(|task| {
+                task.inner_exclusive_access()
+                    .res
+                    .as_ref()
+                    .map(|res| res.tid)
+            })
+            .collect()
     }
 }

@@ -12,6 +12,8 @@ pub struct Semaphore {
 
 pub struct SemaphoreInner {
     pub count: isize,
+    /// the initial count this semaphore was created with
+    pub initial_count: isize,
     pub wait_queue: VecDeque<Arc<TaskControlBlock>>,
 }
 
@@ -23,6 +25,7 @@ impl Semaphore {
             inner: unsafe {
                 UPSafeCell::new(SemaphoreInner {
                     count: res_count as isize,
+                    initial_count: res_count as isize,
                     wait_queue: VecDeque::new(),
                 })
             },

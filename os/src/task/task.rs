@@ -5,6 +5,7 @@ use super::{kstack_alloc, KernelStack, ProcessControlBlock, TaskContext};
 use crate::trap::TrapContext;
 use crate::{mm::PhysPageNum, sync::UPSafeCell};
 use alloc::sync::{Arc, Weak};
+use alloc::vec::Vec;
 use core::cell::RefMut;
 
 /// Task control block structure
@@ -41,6 +42,25 @@ pub struct TaskControlBlockInner {
     pub task_status: TaskStatus,
     /// It is set when active exit or execution error occurs
     pub exit_code: Option<i32>,
+    /// resources currently held by this task: mutex_list[i] held?
+    pub mutex_alloc: Vec<bool>,
+    /// units of semaphore_list[i] currently held by this task
+    pub sem_alloc: Vec<isize>,
+}
+
+impl TaskControlBlockInner {
+    /// make sure mutex_alloc has a slot for mutex id
+    pub fn ensure_mut(&mut self, id: usize) {
+        if self.mutex_alloc.len() <= id {
+            self.mutex_alloc.resize(id + 1, false);
+        }
+    }
+    /// make sure sem_alloc has a slot for semaphore id
+    pub fn ensure_sem(&mut self, id: usize) {
+        if self.sem_alloc.len() <= id {
+            self.sem_alloc.resize(id + 1, 0);
+        }
+    }
 }
 
 impl TaskControlBlockInner {
@@ -75,6 +95,8 @@ impl TaskControlBlock {
                     task_cx: TaskContext::goto_trap_return(kstack_top),
                     task_status: TaskStatus::Ready,
                     exit_code: None,
+                    mutex_alloc: Vec::new(),
+                    sem_alloc: Vec::new(),
                 })
             },
         }

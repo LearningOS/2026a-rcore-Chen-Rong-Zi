@@ -53,9 +53,27 @@ impl OSInode {
         }
         v
     }
+
+    /// Get the number of hard links of the inode
+    pub fn get_nlink(&self) -> u32 {
+        self.inner.exclusive_access().inode.stat().3
+    }
+    /// Get the inode number of the inode
+    pub fn get_inode_id(&self) -> u64 {
+        self.inner.exclusive_access().inode.stat().1
+    }
+    /// Get the mode bits of the inode
+    pub fn get_mode(&self) -> u32 {
+        self.inner.exclusive_access().inode.stat().2
+    }
+    /// Get (dev, ino, mode bits, nlink) of the inode
+    pub fn get_stat_info(&self) -> (u64, u64, u32, u32) {
+        self.inner.exclusive_access().inode.stat()
+    }
 }
 
 lazy_static! {
+    /// The root filesystem inode
     pub static ref ROOT_INODE: Arc<Inode> = {
         let efs = EasyFileSystem::open(BLOCK_DEVICE.clone());
         Arc::new(EasyFileSystem::root_inode(&efs))
@@ -131,6 +149,9 @@ impl File for OSInode {
     }
     fn writable(&self) -> bool {
         self.writable
+    }
+    fn stat_info(&self) -> Option<(u64, u64, u32, u32)> {
+        Some(self.get_stat_info())
     }
     fn read(&self, mut buf: UserBuffer) -> usize {
         let mut inner = self.inner.exclusive_access();

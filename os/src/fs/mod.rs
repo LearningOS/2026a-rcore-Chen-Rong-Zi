@@ -15,6 +15,11 @@ pub trait File: Send + Sync {
     fn read(&self, buf: UserBuffer) -> usize;
     /// write to the file from buf, return the number of bytes written
     fn write(&self, buf: UserBuffer) -> usize;
+    /// if the file is backed by a real filesystem inode,
+    /// return (dev, ino, mode bits, nlink); otherwise None
+    fn stat_info(&self) -> Option<(u64, u64, u32, u32)> {
+        None
+    }
 }
 
 /// The stat of a inode
@@ -46,5 +51,18 @@ bitflags! {
     }
 }
 
-pub use inode::{list_apps, open_file, OSInode, OpenFlags};
+impl Stat {
+    /// Build a stat record for an inode
+    pub fn new(dev: u64, ino: u64, mode: StatMode, nlink: u32) -> Self {
+        Self {
+            dev,
+            ino,
+            mode,
+            nlink,
+            pad: [0u64; 7],
+        }
+    }
+}
+
+pub use inode::{list_apps, open_file, OSInode, OpenFlags, ROOT_INODE};
 pub use stdio::{Stdin, Stdout};

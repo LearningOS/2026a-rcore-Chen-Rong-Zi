@@ -8,7 +8,7 @@
     "ch3": {
       "points": "7/7",
       "score": 100,
-      "commit": "6ecfe83c3cca311e19da7e7250ddb209685ab9ec"
+      "commit": "093c52feadc48f4ba64dc3a1b550eac0cb866a40"
     },
     "ch4": {
       "points": "16/16",
@@ -18,8 +18,8 @@
   },
   "score": 200,
   "upload": {
-    "status": "accepted",
-    "runId": "42389265280",
+    "status": "pending",
+    "runId": "42636630915",
     "runAttempt": "1"
   }
 }
